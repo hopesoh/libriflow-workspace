@@ -1,3 +1,3 @@
-package com.libriflow.user.integration.api;
+package com.libriflow.order.integration;
 
 public record UserDetailsDTO(Long id, String name, String email) {}

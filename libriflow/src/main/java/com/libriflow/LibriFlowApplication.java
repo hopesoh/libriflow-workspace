@@ -1,17 +1,17 @@
 package com.libriflow;
 
 import com.libriflow.model.Book;
-import com.libriflow.user.User;
 import com.libriflow.repository.BookRepository;
-import com.libriflow.user.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 
 import java.math.BigDecimal;
 
 @SpringBootApplication
+@EnableFeignClients
 public class LibriFlowApplication {
 
     public static void main(String[] args) {
@@ -19,24 +19,8 @@ public class LibriFlowApplication {
     }
 
     @Bean
-    CommandLineRunner dataInitializer(BookRepository bookRepository, UserRepository userRepository) {
+    CommandLineRunner dataInitializer(BookRepository bookRepository) {
         return args -> {
-            if (userRepository.count() == 0) {
-                User u1 = new User();
-                u1.setName("João Silva");
-                u1.setEmail("joao@example.com");
-                u1.setPassword("123456");
-                userRepository.save(u1);
-
-                User u2 = new User();
-                u2.setName("Maria Souza");
-                u2.setEmail("maria@example.com");
-                u2.setPassword("senha123");
-                userRepository.save(u2);
-                System.out.println("Usuários de teste inseridos.");
-            }
-
-            // Só insere os livros se a tabela estiver vazia
             if (bookRepository.count() == 0) {
                 Book b1 = new Book();
                 b1.setTitle("O Senhor dos Anéis");
@@ -69,10 +53,10 @@ public class LibriFlowApplication {
                 b4.setPrice(new BigDecimal("24.90"));
                 b4.setStock(0);
                 bookRepository.save(b4);
-                System.out.println("Livros de teste inseridos.");
+                System.out.println("Livros de teste inseridos no Monólito.");
             }
 
-            System.out.println("=== LibriFlow conectado ao PostgreSQL! ===");
+            System.out.println("=== Monólito LibriFlow conectado ao PostgreSQL! ===");
         };
     }
 }
