@@ -1,10 +1,11 @@
-package com.libriflow.service;
+package com.libriflow.book.service;
 
-import com.libriflow.model.Book;
-import com.libriflow.repository.BookRepository;
+import com.libriflow.book.entity.Book;
+import com.libriflow.book.repository.BookRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,5 +40,24 @@ public class BookService {
 
     public void delete(Long id) {
         bookRepository.deleteById(id);
+    }
+
+    public List<Book> findBy(String title, String author) {
+        if (title != null) {
+            // Acessa repository diretamente no controller, ignorando o service
+            return bookRepository.findByTitleContainingIgnoreCase(title);
+        }
+        if (author != null) {
+            return bookRepository.findByAuthorContainingIgnoreCase(author);
+        }
+        return findAll();
+    }
+
+    public List<Book> findByPriceLessThanEqual(BigDecimal max) {
+        return bookRepository.findByPriceLessThanEqual(max);
+    }
+
+    public List<Book> findAllInStock() {
+        return bookRepository.findByStockGreaterThan(BigDecimal.ZERO);
     }
 }

@@ -1,13 +1,13 @@
-package com.libriflow.controller;
+package com.libriflow.order.controller;
 
-import com.libriflow.model.Book;
-import com.libriflow.model.Order;
+import com.libriflow.order.entity.Order;
 import com.libriflow.order.OrderResponseDTO;
-import com.libriflow.order.integration.UserApi;
-import com.libriflow.order.integration.UserDetailsDTO;
-import com.libriflow.repository.BookRepository;
-import com.libriflow.repository.OrderRepository;
-import com.libriflow.service.OrderService;
+import com.libriflow.order.integration.book.BookApi;
+import com.libriflow.order.integration.book.BookDetailsDTO;
+import com.libriflow.order.integration.user.UserApi;
+import com.libriflow.order.integration.user.UserDetailsDTO;
+import com.libriflow.order.repository.OrderRepository;
+import com.libriflow.order.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,12 +29,11 @@ public class OrderController {
     @Autowired
     private OrderRepository orderRepository;
 
-    @Autowired
-    private BookRepository bookRepository;
-
+    private final BookApi bookApi;
     private final UserApi userApi;
 
-    public OrderController(UserApi userApi) {
+    public OrderController(BookApi bookApi, UserApi userApi) {
+        this.bookApi = bookApi;
         this.userApi = userApi;
     }
 
@@ -93,19 +91,18 @@ public class OrderController {
                     .body("A lista de livros não pode ser vazia.");
         }
 
-        List<Book> booksDosPedido = new ArrayList<>();
+        List<BookDetailsDTO> booksDosPedido = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
 
         // --- LÓGICA DE NEGÓCIO NO CONTROLLER: validação de estoque e cálculo de preço ---
         for (Long bookId : bookIds) {
-            Optional<Book> bookOpt = bookRepository.findById(bookId);
 
-            if (bookOpt.isEmpty()) {
+            if (!bookApi.checkBookExists(bookId)) {
                 return ResponseEntity.badRequest()
                         .body("Livro não encontrado com id: " + bookId);
             }
 
-            Book book = bookOpt.get();
+            BookDetailsDTO book = bookApi.getBookDetails(bookId);
 
             // Validação de estoque diretamente no controller
             if (book.getStock() == null || book.getStock() <= 0) {
@@ -118,7 +115,7 @@ public class OrderController {
 
             // Decremento de estoque dentro do loop - N+1 writes no banco
             book.setStock(book.getStock() - 1);
-            bookRepository.save(book); // salva a cada iteração em vez de usar saveAll
+            bookApi.update(bookId, book); // salva a cada iteração em vez de usar saveAll
 
             booksDosPedido.add(book);
         }
@@ -126,7 +123,7 @@ public class OrderController {
         // --- CRIAÇÃO DO PEDIDO NO CONTROLLER ---
         Order order = new Order();
         order.setUserId(userId);
-        order.setBooks(booksDosPedido);
+        order.setBookIds(booksDosPedido.stream().map(BookDetailsDTO::getId).toList());
         order.setTotal(total);
         order.setCreatedAt(LocalDateTime.now());
         order.setStatus("CONFIRMADO");

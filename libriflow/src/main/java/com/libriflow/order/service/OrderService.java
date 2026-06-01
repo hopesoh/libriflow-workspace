@@ -1,7 +1,7 @@
-package com.libriflow.service;
+package com.libriflow.order.service;
 
-import com.libriflow.model.Order;
-import com.libriflow.repository.OrderRepository;
+import com.libriflow.order.entity.Order;
+import com.libriflow.order.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

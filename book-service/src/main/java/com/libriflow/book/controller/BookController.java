@@ -1,9 +1,9 @@
-package com.libriflow.controller;
+package com.libriflow.book.controller;
 
-import com.libriflow.model.Book;
-import com.libriflow.repository.BookRepository;
-import com.libriflow.service.BookService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.libriflow.book.entity.Book;
+import com.libriflow.book.integration.BookIntegrationService;
+import com.libriflow.book.integration.api.BookDetailsDTO;
+import com.libriflow.book.service.BookService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,15 +14,17 @@ import java.util.List;
 @RequestMapping("/api/books")
 public class BookController {
 
-    @Autowired
     private BookService bookService;
+    private BookIntegrationService bookIntegrationService;
 
-    // Injeção direta do repository no controller - viola a camada de serviço
-    @Autowired
-    private BookRepository bookRepository;
+    public BookController(BookService bookService, BookIntegrationService bookIntegrationService) {
+        this.bookService = bookService;
+        this.bookIntegrationService = bookIntegrationService;
+    }
 
     @GetMapping
     public List<Book> findAll() {
+        // Retorna todos os usuários incluindo o campo password - expõe dados sensíveis
         return bookService.findAll();
     }
 
@@ -51,30 +53,33 @@ public class BookController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         // Bypassa o service e chama o repository diretamente - inconsistente com os outros métodos
-        bookRepository.deleteById(id);
+        bookService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/search")
     public List<Book> search(@RequestParam(required = false) String title,
                              @RequestParam(required = false) String author) {
-        if (title != null) {
-            // Acessa repository diretamente no controller, ignorando o service
-            return bookRepository.findByTitleContainingIgnoreCase(title);
-        }
-        if (author != null) {
-            return bookRepository.findByAuthorContainingIgnoreCase(author);
-        }
-        return bookService.findAll();
+        return bookService.findBy(title, author);
     }
 
     @GetMapping("/by-price")
     public List<Book> findByMaxPrice(@RequestParam BigDecimal max) {
-        return bookRepository.findByPriceLessThanEqual(max);
+        return bookService.findByPriceLessThanEqual(max);
     }
 
     @GetMapping("/in-stock")
     public List<Book> findInStock() {
-        return bookRepository.findAllInStock();
+        return bookService.findAllInStock();
+    }
+
+    @GetMapping("/{id}/exists")
+    boolean checkBookExists(@PathVariable Long id) {
+        return bookIntegrationService.checkBookExists(id);
+    }
+
+    @GetMapping("/{id}/details")
+    BookDetailsDTO getBookDetails(@PathVariable Long id) {
+        return bookIntegrationService.getBookDetails(id);
     }
 }

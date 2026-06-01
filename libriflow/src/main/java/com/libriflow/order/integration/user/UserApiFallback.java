@@ -1,4 +1,4 @@
-package com.libriflow.order.integration;
+package com.libriflow.order.integration.user;
 
 import org.springframework.stereotype.Component;
 
