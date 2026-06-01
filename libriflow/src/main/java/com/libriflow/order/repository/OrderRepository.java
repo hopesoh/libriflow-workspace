@@ -1,6 +1,6 @@
-package com.libriflow.repository;
+package com.libriflow.order.repository;
 
-import com.libriflow.model.Order;
+import com.libriflow.order.entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 

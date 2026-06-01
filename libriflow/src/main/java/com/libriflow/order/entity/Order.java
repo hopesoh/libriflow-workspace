@@ -1,5 +1,6 @@
-package com.libriflow.model;
+package com.libriflow.order.entity;
 
+import com.libriflow.order.integration.book.BookDetailsDTO;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,14 +24,10 @@ public class Order {
 
     private Long userId;
 
-    // Lista direta de entidades Book - acoplamento forte, impossível separar em microsserviço
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "order_books",
-        joinColumns = @JoinColumn(name = "order_id"),
-        inverseJoinColumns = @JoinColumn(name = "book_id")
-    )
-    private List<Book> books = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(name = "order_books", joinColumns = @JoinColumn(name = "order_id"))
+    @Column(name = "book_id")
+    private List<Long> bookIds;
 
     private BigDecimal total;
 
