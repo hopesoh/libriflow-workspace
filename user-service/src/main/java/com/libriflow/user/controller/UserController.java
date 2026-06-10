@@ -1,8 +1,11 @@
 package com.libriflow.user.controller;
 
+import com.libriflow.user.controller.request.UserCreateRequest;
+import com.libriflow.user.controller.request.UserUpdateRequest;
 import com.libriflow.user.entity.User;
+import com.libriflow.user.integration.api.UserDetailsDTO;
 import com.libriflow.user.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,40 +15,51 @@ import java.util.List;
 @RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @GetMapping
-    public List<User> findAll() {
-        // Retorna todos os usuários incluindo o campo password - expõe dados sensíveis
-        return userService.findAll();
+    public List<UserDetailsDTO> findAll() {
+        return userService
+                .findAll()
+                .stream()
+                .map(UserController::toDetailsDto)
+                .toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> findById(@PathVariable Long id) {
+    public ResponseEntity<UserDetailsDTO> findById(@PathVariable Long id) {
         return userService.findById(id)
-                .map(ResponseEntity::ok)
+                .map(user -> ResponseEntity.ok(toDetailsDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public User save(@RequestBody User user) {
-        // Recebe User com senha em texto puro diretamente do JSON
-        return userService.save(user);
+    public ResponseEntity<UserDetailsDTO> save(@Valid @RequestBody UserCreateRequest request) {
+        User savedUser = userService.save(request);
+        return ResponseEntity.status(201).body(toDetailsDto(savedUser));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User user) {
-        try {
-            return ResponseEntity.ok(userService.update(id, user));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<UserDetailsDTO> update(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
+        if (!userService.existsBy(id)) return ResponseEntity.notFound().build();
+
+        User updatedUser = userService.update(id, request);
+        return ResponseEntity.ok(toDetailsDto(updatedUser));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (!userService.existsBy(id)) return ResponseEntity.notFound().build();
+
         userService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static UserDetailsDTO toDetailsDto(User user) {
+        return new UserDetailsDTO(user.getId(), user.getName(), user.getEmail());
     }
 }

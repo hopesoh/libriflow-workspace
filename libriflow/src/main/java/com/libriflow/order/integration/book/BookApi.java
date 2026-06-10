@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface BookApi {
 
     @GetMapping("/api/books/{bookId}/exists")
-    boolean checkBookExists(@PathVariable("bookId") Long bookId);
+    boolean checkBookExists(@PathVariable Long bookId);
 
     @GetMapping("/api/books/{bookId}/details")
     BookDetailsDTO getBookDetails(@PathVariable Long bookId);
