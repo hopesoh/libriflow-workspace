@@ -3,6 +3,7 @@ package com.libriflow.user.service;
 import com.libriflow.user.controller.request.UserCreateRequest;
 import com.libriflow.user.controller.request.UserUpdateRequest;
 import com.libriflow.user.entity.User;
+import com.libriflow.user.exception.EmailAlreadyInUseException;
 import com.libriflow.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,9 +31,12 @@ public class UserService {
     }
 
     public User save(UserCreateRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+        ensureEmailAvailable(normalizedEmail, null);
+
         User user = new User();
-        user.setName(request.name());
-        user.setEmail(request.email());
+        user.setName(normalizeName(request.name()));
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.password()));
         return userRepository.save(user);
     }
@@ -40,8 +44,12 @@ public class UserService {
     public User update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + id));
-        user.setName(request.name());
-        user.setEmail(request.email());
+
+        String normalizedEmail = normalizeEmail(request.email());
+        ensureEmailAvailable(normalizedEmail, id);
+
+        user.setName(normalizeName(request.name()));
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.password()));
         return userRepository.save(user);
     }
@@ -52,5 +60,21 @@ public class UserService {
 
     public boolean existsBy(Long id) {
         return userRepository.findById(id).isPresent();
+    }
+
+    private void ensureEmailAvailable(String email, Long userId) {
+        userRepository.findByEmail(email)
+                .filter(existing -> !existing.getId().equals(userId))
+                .ifPresent(existing -> {
+                    throw new EmailAlreadyInUseException(existing.getEmail());
+                });
+    }
+
+    private String normalizeName(String name) {
+        return name.trim().replaceAll("\\s+", " ");
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase();
     }
 }
