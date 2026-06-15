@@ -13,9 +13,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -65,24 +65,24 @@ public class OrderService {
         ensureUserExists(userId);
         ensureValidBookList(bookIds);
 
-        List<BookDetailsDTO> books = new ArrayList<>();
-        BigDecimal total = BigDecimal.ZERO;
+        var purchase = bookIds.stream()
+                .map(this::loadAvailableBook)
+                .collect(Collectors.teeing(
+                        Collectors.toList(),
+                        Collectors.reducing(
+                                BigDecimal.ZERO,
+                                BookDetailsDTO::getPrice,
+                                BigDecimal::add
+                        ),
+                        PurchaseData::new
+                ));
 
-        for (Long bookId : bookIds) {
-            BookDetailsDTO book = loadAvailableBook(bookId);
-            books.add(book);
-            total = total.add(book.getPrice());
-        }
-
-        for (BookDetailsDTO book : books) {
-            book.setStock(book.getStock() - 1);
-            bookApi.update(book.getId(), book);
-        }
+        purchase.books().forEach(this::decrementAndUpdateStock);
 
         Order order = new Order();
         order.setUserId(userId);
-        order.setBookIds(books.stream().map(BookDetailsDTO::getId).toList());
-        order.setTotal(total);
+        order.setBookIds(purchase.books().stream().map(BookDetailsDTO::getId).toList());
+        order.setTotal(purchase.total());
         order.setCreatedAt(LocalDateTime.now());
         order.setStatus("CONFIRMADO");
 
@@ -131,5 +131,13 @@ public class OrderService {
         }
 
         return book;
+    }
+
+    private void decrementAndUpdateStock(BookDetailsDTO book) {
+        book.setStock(book.getStock() - 1);
+        bookApi.update(book.getId(), book);
+    }
+
+    private record PurchaseData(List<BookDetailsDTO> books, BigDecimal total) {
     }
 }
