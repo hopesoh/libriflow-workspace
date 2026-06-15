@@ -1,9 +1,12 @@
 package com.libriflow.book.service;
 
+import com.libriflow.book.controller.request.BookCreateRequest;
+import com.libriflow.book.controller.request.BookUpdateRequest;
 import com.libriflow.book.entity.Book;
+import com.libriflow.book.exception.BookAlreadyExistsException;
 import com.libriflow.book.repository.BookRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,8 +15,11 @@ import java.util.Optional;
 @Service
 public class BookService {
 
-    @Autowired
-    private BookRepository bookRepository;
+    private final BookRepository bookRepository;
+
+    public BookService(BookRepository bookRepository) {
+        this.bookRepository = bookRepository;
+    }
 
     public List<Book> findAll() {
         return bookRepository.findAll();
@@ -23,18 +29,37 @@ public class BookService {
         return bookRepository.findById(id);
     }
 
-    public Book save(Book book) {
+    public Book save(BookCreateRequest request) {
+        String title = normalize(request.title());
+        String author = normalize(request.author());
+        String isbn = normalize(request.isbn());
+
+        ensureBookCombinationAvailable(isbn, author, title, null);
+
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setIsbn(isbn);
+        book.setPrice(request.price());
+        book.setStock(request.stock());
         return bookRepository.save(book);
     }
 
-    public Book update(Long id, Book dados) {
+    public Book update(Long id, BookUpdateRequest request) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Livro não encontrado: " + id));
-        book.setTitle(dados.getTitle());
-        book.setAuthor(dados.getAuthor());
-        book.setIsbn(dados.getIsbn());
-        book.setPrice(dados.getPrice());
-        book.setStock(dados.getStock());
+
+        String title = normalize(request.title());
+        String author = normalize(request.author());
+        String isbn = normalize(request.isbn());
+
+        ensureBookCombinationAvailable(isbn, author, title, id);
+
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setIsbn(isbn);
+        book.setPrice(request.price());
+        book.setStock(request.stock());
         return bookRepository.save(book);
     }
 
@@ -42,13 +67,22 @@ public class BookService {
         bookRepository.deleteById(id);
     }
 
+    public boolean existsBy(Long id) {
+        return bookRepository.existsById(id);
+    }
+
     public List<Book> findBy(String title, String author) {
-        if (title != null) {
-            // Acessa repository diretamente no controller, ignorando o service
-            return bookRepository.findByTitleContainingIgnoreCase(title);
+        String normalizedTitle = normalizeSearchTerm(title);
+        String normalizedAuthor = normalizeSearchTerm(author);
+
+        if (normalizedTitle != null && normalizedAuthor != null) {
+            return bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase(normalizedTitle, normalizedAuthor);
         }
-        if (author != null) {
-            return bookRepository.findByAuthorContainingIgnoreCase(author);
+        if (normalizedTitle != null) {
+            return bookRepository.findByTitleContainingIgnoreCase(normalizedTitle);
+        }
+        if (normalizedAuthor != null) {
+            return bookRepository.findByAuthorContainingIgnoreCase(normalizedAuthor);
         }
         return findAll();
     }
@@ -58,6 +92,45 @@ public class BookService {
     }
 
     public List<Book> findAllInStock() {
-        return bookRepository.findByStockGreaterThan(BigDecimal.ZERO);
+        return bookRepository.findByStockGreaterThan(0);
+    }
+
+    private void ensureBookCombinationAvailable(String isbn, String author, String title, Long bookId) {
+        BookIdentity identity = new BookIdentity(isbn, author, title, bookId);
+
+        if (existsByIsbnAndAuthor(identity)) {
+            throw new BookAlreadyExistsException(isbn, "author");
+        }
+        if (existsByIsbnAndTitle(identity)) {
+            throw new BookAlreadyExistsException(isbn, "title");
+        }
+    }
+
+    private boolean existsByIsbnAndAuthor(BookIdentity identity) {
+        if (identity.bookId() == null) {
+            return bookRepository.existsByIsbnAndAuthor(identity.isbn(), identity.author());
+        }
+        return bookRepository.existsByIsbnAndAuthorAndIdNot(identity.isbn(), identity.author(), identity.bookId());
+    }
+
+    private boolean existsByIsbnAndTitle(BookIdentity identity) {
+        if (identity.bookId() == null) {
+            return bookRepository.existsByIsbnAndTitle(identity.isbn(), identity.title());
+        }
+        return bookRepository.existsByIsbnAndTitleAndIdNot(identity.isbn(), identity.title(), identity.bookId());
+    }
+
+    private String normalize(String value) {
+        return value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String normalizeSearchTerm(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private record BookIdentity(String isbn, String author, String title, Long bookId) {
     }
 }
