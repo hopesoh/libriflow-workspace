@@ -5,6 +5,9 @@ import com.libriflow.book.integration.api.BookApi;
 import com.libriflow.book.integration.api.BookDetailsDTO;
 import com.libriflow.book.repository.BookRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 public class BookIntegrationService implements BookApi {
@@ -25,7 +28,7 @@ public class BookIntegrationService implements BookApi {
         return bookRepository
                 .findById(bookId)
                 .map(book -> new BookDetailsDTO(book.getId(), book.getTitle(), book.getAuthor(), book.getIsbn(), book.getPrice(), book.getStock()))
-                .orElseThrow(() -> new RuntimeException("Book not found"));
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Book not found"));
     }
 
     @Override
