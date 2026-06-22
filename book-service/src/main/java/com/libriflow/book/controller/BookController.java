@@ -3,10 +3,12 @@ package com.libriflow.book.controller;
 import com.libriflow.book.controller.request.BookCreateRequest;
 import com.libriflow.book.controller.request.BookUpdateRequest;
 import com.libriflow.book.entity.Book;
+import com.libriflow.book.exception.BookNotFoundException;
 import com.libriflow.book.integration.BookIntegrationService;
 import com.libriflow.book.integration.api.BookDetailsDTO;
 import com.libriflow.book.service.BookService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -38,10 +40,10 @@ public class BookController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BookDetailsDTO> findById(@PathVariable Long id) {
+    public ResponseEntity<BookDetailsDTO> findById(@PathVariable @Positive Long id) {
         return bookService.findById(id)
                 .map(book -> ResponseEntity.ok(new BookDetailsDTO(book.getId(), book.getTitle(), book.getAuthor(), book.getIsbn(), book.getPrice(), book.getStock())))
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new BookNotFoundException(id));
     }
 
     @PostMapping
@@ -51,21 +53,13 @@ public class BookController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BookDetailsDTO> update(@PathVariable Long id, @Valid @RequestBody BookUpdateRequest request) {
-        try {
-            Book updatedBook = bookService.update(id, request);
-            return ResponseEntity.ok(toDetailsDto(updatedBook));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<BookDetailsDTO> update(@PathVariable @Positive Long id, @Valid @RequestBody BookUpdateRequest request) {
+        Book updatedBook = bookService.update(id, request);
+        return ResponseEntity.ok(toDetailsDto(updatedBook));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!bookService.existsBy(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
+    public ResponseEntity<Void> delete(@PathVariable @Positive Long id) {
         bookService.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -87,12 +81,12 @@ public class BookController {
     }
 
     @GetMapping("/{id}/exists")
-    boolean checkBookExists(@PathVariable Long id) {
+    boolean checkBookExists(@PathVariable @Positive Long id) {
         return bookIntegrationService.checkBookExists(id);
     }
 
     @GetMapping("/{id}/details")
-    BookDetailsDTO getBookDetails(@PathVariable Long id) {
+    BookDetailsDTO getBookDetails(@PathVariable @Positive Long id) {
         return bookIntegrationService.getBookDetails(id);
     }
 

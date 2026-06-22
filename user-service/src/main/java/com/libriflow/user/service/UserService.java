@@ -4,6 +4,7 @@ import com.libriflow.user.controller.request.UserCreateRequest;
 import com.libriflow.user.controller.request.UserUpdateRequest;
 import com.libriflow.user.entity.User;
 import com.libriflow.user.exception.EmailAlreadyInUseException;
+import com.libriflow.user.exception.UserNotFoundException;
 import com.libriflow.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,7 +44,7 @@ public class UserService {
 
     public User update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + id));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
         String normalizedEmail = normalizeEmail(request.email());
         ensureEmailAvailable(normalizedEmail, id);
@@ -55,6 +56,9 @@ public class UserService {
     }
 
     public void delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new UserNotFoundException(id);
+        }
         userRepository.deleteById(id);
     }
 
