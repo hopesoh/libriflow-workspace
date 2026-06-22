@@ -2,9 +2,12 @@ package com.libriflow.user.controller;
 
 import com.libriflow.user.integration.UserIntegrationService;
 import com.libriflow.user.integration.api.UserDetailsDTO;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Validated
 @RequestMapping("/api/users")
 public class UserApiController {
 
@@ -15,12 +18,12 @@ public class UserApiController {
     }
 
     @GetMapping("/{userId}/exists")
-    public boolean checkUserExists(@PathVariable Long userId) {
+    public boolean checkUserExists(@PathVariable @Positive Long userId) {
         return userIntegrationService.checkUserExists(userId);
     }
 
     @GetMapping("/{userId}/details")
-    public UserDetailsDTO getUserDetails(@PathVariable Long userId) {
+    public UserDetailsDTO getUserDetails(@PathVariable @Positive Long userId) {
         return userIntegrationService.getUserDetails(userId);
     }
 }

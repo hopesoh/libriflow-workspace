@@ -4,6 +4,7 @@ import com.libriflow.book.controller.request.BookCreateRequest;
 import com.libriflow.book.controller.request.BookUpdateRequest;
 import com.libriflow.book.entity.Book;
 import com.libriflow.book.exception.BookAlreadyExistsException;
+import com.libriflow.book.exception.BookNotFoundException;
 import com.libriflow.book.repository.BookRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -47,7 +48,7 @@ public class BookService {
 
     public Book update(Long id, BookUpdateRequest request) {
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Livro não encontrado: " + id));
+                .orElseThrow(() -> new BookNotFoundException(id));
 
         String title = normalize(request.title());
         String author = normalize(request.author());
@@ -64,6 +65,9 @@ public class BookService {
     }
 
     public void delete(Long id) {
+        if (!bookRepository.existsById(id)) {
+            throw new BookNotFoundException(id);
+        }
         bookRepository.deleteById(id);
     }
 

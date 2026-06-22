@@ -2,14 +2,17 @@ package com.libriflow.order.service;
 
 import com.libriflow.order.OrderResponseDTO;
 import com.libriflow.order.entity.Order;
+import com.libriflow.order.exception.BookNotFoundException;
+import com.libriflow.order.exception.BookOutOfStockException;
+import com.libriflow.order.exception.InvalidPurchaseRequestException;
+import com.libriflow.order.exception.OrderNotFoundException;
+import com.libriflow.order.exception.UserNotFoundException;
 import com.libriflow.order.integration.book.BookApi;
 import com.libriflow.order.integration.book.BookDetailsDTO;
 import com.libriflow.order.integration.user.UserApi;
 import com.libriflow.order.integration.user.UserDetailsDTO;
 import com.libriflow.order.repository.OrderRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -99,7 +102,7 @@ public class OrderService {
 
     public void deleteById(Long id) {
         if (!orderRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado com id: " + id);
+            throw new OrderNotFoundException(id);
         }
 
         orderRepository.deleteById(id);
@@ -107,27 +110,24 @@ public class OrderService {
 
     private void ensureUserExists(Long userId) {
         if (!userApi.checkUserExists(userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado com id: " + userId);
+            throw new UserNotFoundException(userId);
         }
     }
 
     private void ensureValidBookList(List<Long> bookIds) {
         if (bookIds == null || bookIds.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A lista de livros não pode ser vazia.");
+            throw new InvalidPurchaseRequestException("A lista de livros não pode ser vazia.");
         }
     }
 
     private BookDetailsDTO loadAvailableBook(Long bookId) {
         if (!bookApi.checkBookExists(bookId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Livro não encontrado com id: " + bookId);
+            throw new BookNotFoundException(bookId);
         }
 
         BookDetailsDTO book = bookApi.getBookDetails(bookId);
         if (book.getStock() == null || book.getStock() <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Livro sem estoque: \"" + book.getTitle() + "\" (id=" + bookId + ")"
-            );
+            throw new BookOutOfStockException(bookId, book.getTitle());
         }
 
         return book;

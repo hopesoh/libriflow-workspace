@@ -3,6 +3,7 @@ package com.libriflow.user.integration;
 import com.libriflow.user.repository.UserRepository;
 import com.libriflow.user.integration.api.UserApi;
 import com.libriflow.user.integration.api.UserDetailsDTO;
+import com.libriflow.user.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +24,6 @@ public class UserIntegrationService implements UserApi {
     public UserDetailsDTO getUserDetails(Long userId) {
         return userRepository.findById(userId)
                 .map(user -> new UserDetailsDTO(user.getId(), user.getName(), user.getEmail()))
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
     }
 }
